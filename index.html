@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>The Explorer Archive</title>
+<title>Media Archive Beta</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -21,13 +21,10 @@ header {
   border-bottom: 1px solid #ddd;
 }
 
-.container {
-  display: flex;
-  height: calc(100vh - 60px);
-}
+.container { display: flex; height: calc(100vh - 60px); }
 
 .sidebar {
-  width: 250px;
+  width: 260px;
   background: white;
   border-right: 1px solid #ddd;
   padding: 10px;
@@ -37,16 +34,13 @@ header {
   padding: 10px;
   border-radius: 10px;
   cursor: pointer;
+  display: flex;
+  justify-content: space-between;
 }
 
-.folder.active {
-  background: #e5e5ea;
-}
+.folder:hover { background: #eee; }
 
-.main {
-  flex: 1;
-  padding: 20px;
-}
+.main { flex: 1; padding: 20px; }
 
 .card {
   background: white;
@@ -54,25 +48,50 @@ header {
   border-radius: 14px;
   margin-bottom: 10px;
   display: flex;
+  align-items: center;
   justify-content: space-between;
 }
+
+.thumb {
+  width: 60px;
+  height: 40px;
+  border-radius: 6px;
+  margin-right: 10px;
+  object-fit: cover;
+}
+
+.row { display: flex; align-items: center; }
 
 button {
   border: none;
   border-radius: 10px;
-  padding: 6px 10px;
+  padding: 8px 12px;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.primary {
-  background: black;
+/* Default button styles */
+.primary { 
+  background: black; 
+  color: white; 
+}
+
+.secondary { 
+  background: #e5e5ea; 
+}
+
+/* Hover effect for all buttons */
+button:hover {
+  transform: scale(1.08);
+  background: #34c759; /* Apple-style green */
   color: white;
 }
 
-.secondary {
-  background: #e5e5ea;
+button:active {
+  transform: scale(0.98);
 }
 
+/* Floating + button */
 .fab {
   position: fixed;
   bottom: 20px;
@@ -83,9 +102,15 @@ button {
   background: black;
   color: white;
   font-size: 24px;
+  transition: all 0.2s ease;
 }
 
-input {
+.fab:hover {
+  transform: scale(1.12);
+  background: #34c759;
+}
+
+input, select {
   width: 100%;
   padding: 8px;
   margin-bottom: 10px;
@@ -106,61 +131,78 @@ input {
   background: white;
   padding: 20px;
   border-radius: 16px;
-  width: 300px;
+  width: 320px;
 }
 </style>
 </head>
 
 <body>
 
-<header>📁 The Explorer Archive</header>
+<header>📁 Media Archive Beta</header>
 
 <div class="container">
   <div class="sidebar">
     <button class="primary" onclick="createFolder()">+ Folder</button>
+    <button onclick="shareFolder()">🔗 Share Folder</button>
+    <button onclick="shareAll()">🌐 Share Archive</button>
     <div id="folders"></div>
   </div>
 
   <div class="main">
     <input placeholder="Search..." oninput="search(this.value)">
+    <select onchange="sortItems(this.value)">
+      <option value="new">Newest</option>
+      <option value="az">A-Z</option>
+    </select>
     <div id="items"></div>
   </div>
 </div>
 
-<button class="fab" onclick="openAddMenu()">+</button>
+<button class="fab" onclick="openAdd()">+</button>
 
 <div class="modal" id="modal">
   <div class="modal-content" id="modalContent"></div>
 </div>
 
 <script>
-let data = JSON.parse(localStorage.getItem("archive")) || [
-  { name: "Default Folder", items: [] }
-];
+let data = JSON.parse(localStorage.getItem("archive")) || {
+  name: "root",
+  folders: [],
+  items: []
+};
 
-let currentFolder = 0;
+let path = [data];
 let filtered = null;
 
 function save() {
   localStorage.setItem("archive", JSON.stringify(data));
 }
 
+function current() {
+  return path[path.length - 1];
+}
+
 function renderFolders() {
   let el = document.getElementById("folders");
   el.innerHTML = "";
 
-  data.forEach((f, i) => {
+  if (path.length > 1) {
+    let back = document.createElement("div");
+    back.innerHTML = "⬅ Back";
+    back.style.cursor = "pointer";
+    back.style.marginBottom = "10px";
+    back.onclick = () => { path.pop(); render(); };
+    el.appendChild(back);
+  }
+
+  current().folders.forEach((f, i) => {
     let div = document.createElement("div");
-    div.className = "folder " + (i === currentFolder ? "active" : "");
-    div.innerText = f.name;
+    div.className = "folder";
 
-    div.onclick = () => {
-      currentFolder = i;
-      filtered = null;
-      renderItems();
-      renderFolders();
-    };
-
+    div.innerHTML = `
+      <span onclick="openFolder(${i})">${f.name}</span>
+      <button onclick="deleteFolder(${i})">⋮</button>
+    `;
     el.appendChild(div);
   });
 }
@@ -169,197 +211,162 @@ function renderItems() {
   let el = document.getElementById("items");
   el.innerHTML = "";
 
-  let items = filtered || data[currentFolder].items;
+  let items = filtered || current().items;
 
   items.forEach((item, i) => {
+    let thumb = getThumbnail(item.content);
+
     let div = document.createElement("div");
     div.className = "card";
 
-    let icon = item.type === "file"
-      ? (item.content.includes("video") ? "🎬" : "🖼️")
-      : "🔗";
-
     div.innerHTML = `
-      <span onclick="openMedia(${i})">${icon} ${item.title}</span>
+      <div class="row" onclick="openLink(${i})">
+        <img class="thumb" src="${thumb}">
+        ${item.title}
+      </div>
       <div>
-        <button class="secondary" onclick="editItem(${i})">Edit</button>
-        <button class="secondary" onclick="deleteItem(${i})">Delete</button>
+        <button onclick="editItem(${i})">Edit</button>
+        <button onclick="deleteItem(${i})">Delete</button>
       </div>
     `;
+
     el.appendChild(div);
   });
 }
 
-function search(q) {
-  if (!q) {
-    filtered = null;
-    renderItems();
-    return;
+function getThumbnail(url) {
+  if (url.includes("youtube")) {
+    let id = url.split("v=")[1]?.split("&")[0];
+    return "https://img.youtube.com/vi/" + id + "/0.jpg";
   }
+  return "https://via.placeholder.com/60x40";
+}
 
-  filtered = data[currentFolder].items.filter(i =>
-    i.title.toLowerCase().includes(q.toLowerCase())
-  );
-
-  renderItems();
+function openFolder(i) {
+  path.push(current().folders[i]);
+  render();
 }
 
 function createFolder() {
   let name = prompt("Folder name:");
   if (!name) return;
 
-  data.push({ name, items: [] });
-  save();
-  renderFolders();
+  current().folders.push({ name, folders: [], items: [] });
+  save(); render();
 }
 
-function openAddMenu() {
-  showModal(`
-    <h3>Add Media</h3>
-    <button onclick="upload()">Upload File</button>
-    <button onclick="addLink()">Web Link</button>
-  `);
+function deleteFolder(i) {
+  if (!confirm("Delete folder?")) return;
+  current().folders.splice(i, 1);
+  save(); render();
 }
 
-function upload() {
-  showModal(`
-    <h3>Upload</h3>
-    <input type="file" id="file">
-    <input placeholder="Title" id="title">
-    <button onclick="saveUpload()">Save</button>
-  `);
-}
-
-function saveUpload() {
-  let fileInput = document.getElementById("file");
-  let titleInput = document.getElementById("title");
-
-  if (!fileInput.files[0] || !titleInput.value) {
-    alert("Missing file or title");
-    return;
-  }
-
-  let file = fileInput.files[0];
-
-  if (file.size > 4 * 1024 * 1024) {
-    alert("File too large (Max ~4MB)");
-    return;
-  }
-
-  let reader = new FileReader();
-
-  reader.onload = function () {
-    data[currentFolder].items.push({
-      type: "file",
-      title: titleInput.value,
-      content: reader.result
-    });
-
-    save();
-    closeModal();
-    renderItems();
-  };
-
-  reader.readAsDataURL(file);
-}
-
-function addLink() {
+function openAdd() {
   showModal(`
     <h3>Add Link</h3>
-    <input placeholder="Title" id="title">
-    <input placeholder="URL" id="link">
+    <input id="title" placeholder="Title">
+    <input id="link" placeholder="URL">
     <button onclick="saveLink()">Save</button>
   `);
 }
 
 function saveLink() {
-  let titleInput = document.getElementById("title");
-  let linkInput = document.getElementById("link");
+  let t = title.value;
+  let l = link.value;
 
-  if (!titleInput.value || !linkInput.value) {
-    alert("Please fill all fields");
-    return;
-  }
+  if (!t || !l) return alert("Fill all fields");
 
-  data[currentFolder].items.push({
-    type: "link",
-    title: titleInput.value,
-    content: linkInput.value
+  current().items.push({
+    title: t,
+    content: l,
+    time: Date.now()
   });
 
-  save();
-  closeModal();
-  renderItems();
+  save(); closeModal(); render();
 }
 
-function openMedia(i) {
-  let item = data[currentFolder].items[i];
-
-  if (item.type === "file") {
-    showModal(`
-      <h3>${item.title}</h3>
-      ${item.content.includes("video")
-        ? `<video src="${item.content}" controls width="100%"></video>`
-        : `<img src="${item.content}" width="100%">`}
-      <br><br>
-      <a href="${item.content}" download>Download</a>
-    `);
-  } else {
-    window.open(item.content, "_blank");
-  }
+function openLink(i) {
+  window.open(current().items[i].content, "_blank");
 }
 
 function editItem(i) {
-  let item = data[currentFolder].items[i];
+  let item = current().items[i];
 
   showModal(`
-    <h3>Edit</h3>
     <input id="title" value="${item.title}">
-    ${item.type === "link" ? `<input id="link" value="${item.content}">` : ""}
+    <input id="link" value="${item.content}">
     <button onclick="saveEdit(${i})">Save</button>
   `);
 }
 
 function saveEdit(i) {
-  let item = data[currentFolder].items[i];
-
-  let titleInput = document.getElementById("title");
-  let linkInput = document.getElementById("link");
-
-  item.title = titleInput.value;
-
-  if (item.type === "link" && linkInput) {
-    item.content = linkInput.value;
-  }
-
-  save();
-  closeModal();
-  renderItems();
+  let item = current().items[i];
+  item.title = title.value;
+  item.content = link.value;
+  save(); closeModal(); render();
 }
 
 function deleteItem(i) {
-  if (!confirm("Delete this item?")) return;
+  if (!confirm("Delete item?")) return;
+  current().items.splice(i, 1);
+  save(); render();
+}
 
-  data[currentFolder].items.splice(i, 1);
-  save();
+function search(q) {
+  if (!q) return filtered=null, renderItems();
+  filtered = current().items.filter(i =>
+    i.title.toLowerCase().includes(q.toLowerCase())
+  );
   renderItems();
 }
 
+function sortItems(type) {
+  if (type === "az") {
+    current().items.sort((a,b)=>a.title.localeCompare(b.title));
+  } else {
+    current().items.sort((a,b)=>b.time-a.time);
+  }
+  renderItems();
+}
+
+function shareFolder() {
+  let encoded = encodeURIComponent(JSON.stringify(current()));
+  prompt("Copy this link:", location.href.split("?")[0] + "?data=" + encoded);
+}
+
+function shareAll() {
+  let encoded = encodeURIComponent(JSON.stringify(data));
+  prompt("Copy this link:", location.href.split("?")[0] + "?data=" + encoded);
+}
+
+function loadShared() {
+  let params = new URLSearchParams(location.search);
+  if (params.get("data")) {
+    data = JSON.parse(decodeURIComponent(params.get("data")));
+    path = [data];
+  }
+}
+
 function showModal(html) {
-  document.getElementById("modalContent").innerHTML = html;
-  document.getElementById("modal").style.display = "flex";
+  modalContent.innerHTML = html;
+  modal.style.display = "flex";
 }
 
 function closeModal() {
-  document.getElementById("modal").style.display = "none";
+  modal.style.display = "none";
 }
 
-document.getElementById("modal").onclick = function(e) {
+modal.onclick = e => {
   if (e.target.id === "modal") closeModal();
 };
 
-renderFolders();
-renderItems();
+function render() {
+  renderFolders();
+  renderItems();
+}
+
+loadShared();
+render();
 </script>
 
 </body>
