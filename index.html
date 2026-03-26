@@ -134,7 +134,10 @@ input {
 </div>
 
 <script>
-let data = JSON.parse(localStorage.getItem("archive")) || [];
+let data = JSON.parse(localStorage.getItem("archive")) || [
+  { name: "Default Folder", items: [] }
+];
+
 let currentFolder = 0;
 let filtered = null;
 
@@ -150,7 +153,14 @@ function renderFolders() {
     let div = document.createElement("div");
     div.className = "folder " + (i === currentFolder ? "active" : "");
     div.innerText = f.name;
-    div.onclick = () => { currentFolder = i; renderItems(); renderFolders(); };
+
+    div.onclick = () => {
+      currentFolder = i;
+      filtered = null;
+      renderItems();
+      renderFolders();
+    };
+
     el.appendChild(div);
   });
 }
@@ -159,7 +169,7 @@ function renderItems() {
   let el = document.getElementById("items");
   el.innerHTML = "";
 
-  let items = filtered || data[currentFolder]?.items || [];
+  let items = filtered || data[currentFolder].items;
 
   items.forEach((item, i) => {
     let div = document.createElement("div");
@@ -181,17 +191,23 @@ function renderItems() {
 }
 
 function search(q) {
-  if (!q) return filtered = null, renderItems();
+  if (!q) {
+    filtered = null;
+    renderItems();
+    return;
+  }
 
   filtered = data[currentFolder].items.filter(i =>
     i.title.toLowerCase().includes(q.toLowerCase())
   );
+
   renderItems();
 }
 
 function createFolder() {
   let name = prompt("Folder name:");
   if (!name) return;
+
   data.push({ name, items: [] });
   save();
   renderFolders();
@@ -207,6 +223,7 @@ function openAddMenu() {
 
 function upload() {
   showModal(`
+    <h3>Upload</h3>
     <input type="file" id="file">
     <input placeholder="Title" id="title">
     <button onclick="saveUpload()">Save</button>
@@ -214,23 +231,41 @@ function upload() {
 }
 
 function saveUpload() {
-  let file = fileInput = document.getElementById("file").files[0];
-  let title = document.getElementById("title").value;
+  let fileInput = document.getElementById("file");
+  let titleInput = document.getElementById("title");
+
+  if (!fileInput.files[0] || !titleInput.value) {
+    alert("Missing file or title");
+    return;
+  }
+
+  let file = fileInput.files[0];
+
+  if (file.size > 4 * 1024 * 1024) {
+    alert("File too large (Max ~4MB)");
+    return;
+  }
 
   let reader = new FileReader();
-  reader.onload = () => {
+
+  reader.onload = function () {
     data[currentFolder].items.push({
       type: "file",
-      title,
+      title: titleInput.value,
       content: reader.result
     });
-    save(); closeModal(); renderItems();
+
+    save();
+    closeModal();
+    renderItems();
   };
+
   reader.readAsDataURL(file);
 }
 
 function addLink() {
   showModal(`
+    <h3>Add Link</h3>
     <input placeholder="Title" id="title">
     <input placeholder="URL" id="link">
     <button onclick="saveLink()">Save</button>
@@ -238,12 +273,23 @@ function addLink() {
 }
 
 function saveLink() {
+  let titleInput = document.getElementById("title");
+  let linkInput = document.getElementById("link");
+
+  if (!titleInput.value || !linkInput.value) {
+    alert("Please fill all fields");
+    return;
+  }
+
   data[currentFolder].items.push({
     type: "link",
-    title: title.value,
-    content: link.value
+    title: titleInput.value,
+    content: linkInput.value
   });
-  save(); closeModal(); renderItems();
+
+  save();
+  closeModal();
+  renderItems();
 }
 
 function openMedia(i) {
@@ -255,6 +301,7 @@ function openMedia(i) {
       ${item.content.includes("video")
         ? `<video src="${item.content}" controls width="100%"></video>`
         : `<img src="${item.content}" width="100%">`}
+      <br><br>
       <a href="${item.content}" download>Download</a>
     `);
   } else {
@@ -266,34 +313,48 @@ function editItem(i) {
   let item = data[currentFolder].items[i];
 
   showModal(`
+    <h3>Edit</h3>
     <input id="title" value="${item.title}">
-    ${item.type==="link" ? `<input id="link" value="${item.content}">` : ""}
+    ${item.type === "link" ? `<input id="link" value="${item.content}">` : ""}
     <button onclick="saveEdit(${i})">Save</button>
   `);
 }
 
 function saveEdit(i) {
   let item = data[currentFolder].items[i];
-  item.title = title.value;
-  if (item.type==="link") item.content = link.value;
-  save(); closeModal(); renderItems();
+
+  let titleInput = document.getElementById("title");
+  let linkInput = document.getElementById("link");
+
+  item.title = titleInput.value;
+
+  if (item.type === "link" && linkInput) {
+    item.content = linkInput.value;
+  }
+
+  save();
+  closeModal();
+  renderItems();
 }
 
 function deleteItem(i) {
-  data[currentFolder].items.splice(i,1);
-  save(); renderItems();
+  if (!confirm("Delete this item?")) return;
+
+  data[currentFolder].items.splice(i, 1);
+  save();
+  renderItems();
 }
 
 function showModal(html) {
-  modalContent.innerHTML = html;
-  modal.style.display = "flex";
+  document.getElementById("modalContent").innerHTML = html;
+  document.getElementById("modal").style.display = "flex";
 }
 
 function closeModal() {
-  modal.style.display = "none";
+  document.getElementById("modal").style.display = "none";
 }
 
-modal.onclick = e => {
+document.getElementById("modal").onclick = function(e) {
   if (e.target.id === "modal") closeModal();
 };
 
