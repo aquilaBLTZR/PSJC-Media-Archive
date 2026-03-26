@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Explorer Archive</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f5f5f7;
+}
+
+header {
+  padding: 15px 20px;
+  font-size: 20px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #ddd;
+}
+
+.container {
+  display: flex;
+  height: calc(100vh - 60px);
+}
+
+.sidebar {
+  width: 250px;
+  background: white;
+  border-right: 1px solid #ddd;
+  padding: 10px;
+}
+
+.folder {
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.folder.active {
+  background: #e5e5ea;
+}
+
+.main {
+  flex: 1;
+  padding: 20px;
+}
+
+.card {
+  background: white;
+  padding: 12px;
+  border-radius: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.primary {
+  background: black;
+  color: white;
+}
+
+.secondary {
+  background: #e5e5ea;
+}
+
+.fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  background: black;
+  color: white;
+  font-size: 24px;
+}
+
+input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  width: 300px;
+}
+</style>
+</head>
+
+<body>
+
+<header>📁 The Explorer Archive</header>
+
+<div class="container">
+  <div class="sidebar">
+    <button class="primary" onclick="createFolder()">+ Folder</button>
+    <div id="folders"></div>
+  </div>
+
+  <div class="main">
+    <input placeholder="Search..." oninput="search(this.value)">
+    <div id="items"></div>
+  </div>
+</div>
+
+<button class="fab" onclick="openAddMenu()">+</button>
+
+<div class="modal" id="modal">
+  <div class="modal-content" id="modalContent"></div>
+</div>
+
+<script>
+let data = JSON.parse(localStorage.getItem("archive")) || [];
+let currentFolder = 0;
+let filtered = null;
+
+function save() {
+  localStorage.setItem("archive", JSON.stringify(data));
+}
+
+function renderFolders() {
+  let el = document.getElementById("folders");
+  el.innerHTML = "";
+
+  data.forEach((f, i) => {
+    let div = document.createElement("div");
+    div.className = "folder " + (i === currentFolder ? "active" : "");
+    div.innerText = f.name;
+    div.onclick = () => { currentFolder = i; renderItems(); renderFolders(); };
+    el.appendChild(div);
+  });
+}
+
+function renderItems() {
+  let el = document.getElementById("items");
+  el.innerHTML = "";
+
+  let items = filtered || data[currentFolder]?.items || [];
+
+  items.forEach((item, i) => {
+    let div = document.createElement("div");
+    div.className = "card";
+
+    let icon = item.type === "file"
+      ? (item.content.includes("video") ? "🎬" : "🖼️")
+      : "🔗";
+
+    div.innerHTML = `
+      <span onclick="openMedia(${i})">${icon} ${item.title}</span>
+      <div>
+        <button class="secondary" onclick="editItem(${i})">Edit</button>
+        <button class="secondary" onclick="deleteItem(${i})">Delete</button>
+      </div>
+    `;
+    el.appendChild(div);
+  });
+}
+
+function search(q) {
+  if (!q) return filtered = null, renderItems();
+
+  filtered = data[currentFolder].items.filter(i =>
+    i.title.toLowerCase().includes(q.toLowerCase())
+  );
+  renderItems();
+}
+
+function createFolder() {
+  let name = prompt("Folder name:");
+  if (!name) return;
+  data.push({ name, items: [] });
+  save();
+  renderFolders();
+}
+
+function openAddMenu() {
+  showModal(`
+    <h3>Add Media</h3>
+    <button onclick="upload()">Upload File</button>
+    <button onclick="addLink()">Web Link</button>
+  `);
+}
+
+function upload() {
+  showModal(`
+    <input type="file" id="file">
+    <input placeholder="Title" id="title">
+    <button onclick="saveUpload()">Save</button>
+  `);
+}
+
+function saveUpload() {
+  let file = fileInput = document.getElementById("file").files[0];
+  let title = document.getElementById("title").value;
+
+  let reader = new FileReader();
+  reader.onload = () => {
+    data[currentFolder].items.push({
+      type: "file",
+      title,
+      content: reader.result
+    });
+    save(); closeModal(); renderItems();
+  };
+  reader.readAsDataURL(file);
+}
+
+function addLink() {
+  showModal(`
+    <input placeholder="Title" id="title">
+    <input placeholder="URL" id="link">
+    <button onclick="saveLink()">Save</button>
+  `);
+}
+
+function saveLink() {
+  data[currentFolder].items.push({
+    type: "link",
+    title: title.value,
+    content: link.value
+  });
+  save(); closeModal(); renderItems();
+}
+
+function openMedia(i) {
+  let item = data[currentFolder].items[i];
+
+  if (item.type === "file") {
+    showModal(`
+      <h3>${item.title}</h3>
+      ${item.content.includes("video")
+        ? `<video src="${item.content}" controls width="100%"></video>`
+        : `<img src="${item.content}" width="100%">`}
+      <a href="${item.content}" download>Download</a>
+    `);
+  } else {
+    window.open(item.content, "_blank");
+  }
+}
+
+function editItem(i) {
+  let item = data[currentFolder].items[i];
+
+  showModal(`
+    <input id="title" value="${item.title}">
+    ${item.type==="link" ? `<input id="link" value="${item.content}">` : ""}
+    <button onclick="saveEdit(${i})">Save</button>
+  `);
+}
+
+function saveEdit(i) {
+  let item = data[currentFolder].items[i];
+  item.title = title.value;
+  if (item.type==="link") item.content = link.value;
+  save(); closeModal(); renderItems();
+}
+
+function deleteItem(i) {
+  data[currentFolder].items.splice(i,1);
+  save(); renderItems();
+}
+
+function showModal(html) {
+  modalContent.innerHTML = html;
+  modal.style.display = "flex";
+}
+
+function closeModal() {
+  modal.style.display = "none";
+}
+
+modal.onclick = e => {
+  if (e.target.id === "modal") closeModal();
+};
+
+renderFolders();
+renderItems();
+</script>
+
+</body>
+</html>
