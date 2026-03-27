@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>The Explorer Archive Beta</title>
+<title>PSJC Media Archive</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {
@@ -66,24 +66,16 @@ body.dark input { background:#333; color:#f5f5f7; border:1px solid #555; }
 .modal-content { background:rgba(255,255,255,0.8); backdrop-filter:blur(14px); padding:24px; border-radius:20px; width:340px; transition:all 0.3s; }
 body.dark .modal-content { background:rgba(40,40,40,0.85); color:#f5f5f7; }
 
-.color-tag { width:18px;height:18px;border-radius:50%;display:inline-block;margin-right:4px;cursor:pointer;border:1px solid #888; }
+.color-tag { width:18px;height:18px;border-radius:50%;display:inline-block;margin-right:4px;cursor:pointer;border:1px solid #888; transition:0.2s; }
+.color-tag.selected { transform:scale(1.4); border:2px solid #000; }
 </style>
 </head>
 <body>
 
 <header>
-  📁 The Explorer Archive Beta
+  📁 PSJC Media Archive (Alpha v1.0)
   <div class="header-controls">
     <button onclick="toggleDarkMode()">🌙</button>
-    <button onclick="showRecent()">Recently Added</button>
-    <span class="color-tag" style="background:red;" onclick="filterColor('red')"></span>
-    <span class="color-tag" style="background:orange;" onclick="filterColor('orange')"></span>
-    <span class="color-tag" style="background:yellow;" onclick="filterColor('yellow')"></span>
-    <span class="color-tag" style="background:green;" onclick="filterColor('green')"></span>
-    <span class="color-tag" style="background:blue;" onclick="filterColor('blue')"></span>
-    <span class="color-tag" style="background:purple;" onclick="filterColor('purple')"></span>
-    <span class="color-tag" style="background:pink;" onclick="filterColor('pink')"></span>
-    <span class="color-tag" style="background:gray;" onclick="filterColor('gray')"></span>
   </div>
 </header>
 
@@ -93,6 +85,17 @@ body.dark .modal-content { background:rgba(40,40,40,0.85); color:#f5f5f7; }
     <div id="folders"></div>
   </div>
   <div class="main">
+    <div style="margin-bottom:10px;">
+      <button onclick="showRecent()">Recently Added</button>
+      <span class="color-tag" style="background:red;" onclick="filterColor('red',this)"></span>
+      <span class="color-tag" style="background:orange;" onclick="filterColor('orange',this)"></span>
+      <span class="color-tag" style="background:yellow;" onclick="filterColor('yellow',this)"></span>
+      <span class="color-tag" style="background:green;" onclick="filterColor('green',this)"></span>
+      <span class="color-tag" style="background:blue;" onclick="filterColor('blue',this)"></span>
+      <span class="color-tag" style="background:purple;" onclick="filterColor('purple',this)"></span>
+      <span class="color-tag" style="background:pink;" onclick="filterColor('pink',this)"></span>
+      <span class="color-tag" style="background:gray;" onclick="filterColor('gray',this)"></span>
+    </div>
     <input placeholder="Search..." oninput="search(this.value)">
     <div id="items"></div>
   </div>
@@ -113,11 +116,11 @@ let selectedColor=null;
 // Save
 function save(){localStorage.setItem("archive",JSON.stringify(data));}
 
-// Render folders with drag and click select
+// Render folders
 function renderFolders(){
   const el=document.getElementById("folders"); el.innerHTML="";
   data.forEach((f,i)=>{
-    const div=document.createElement("div"); div.className="folder "+(i===currentFolder?"active":""); div.draggable=true;
+    const div=document.createElement("div"); div.className="folder "+(i===currentFolder?"active":"");
     div.innerHTML=`<span>${f.name}</span><button onclick="showDropdown(${i},event)">⋮</button>
       <div class="dropdown" id="dropdown-${i}">
         <button onclick="renameFolder(${i})">Rename</button>
@@ -126,19 +129,11 @@ function renderFolders(){
     div.addEventListener('click',e=>{
       if(!e.target.closest('.dropdown') && e.target.tagName!=='BUTTON'){selectFolder(i);}
     });
-    // Drag
-    div.addEventListener('dragstart',e=>{ e.dataTransfer.setData("text/plain",i); });
-    div.addEventListener('dragover',e=>{ e.preventDefault(); });
-    div.addEventListener('drop',e=>{
-      e.preventDefault();
-      let from=parseInt(e.dataTransfer.getData("text/plain"));
-      const temp=data[from]; data.splice(from,1); data.splice(i,0,temp); save(); renderFolders();
-    });
     el.appendChild(div);
   });
 }
 
-function selectFolder(i){currentFolder=i; filtered=null; renderFolders(); renderItems();}
+function selectFolder(i){currentFolder=i; filtered=null; clearColorSelection(); renderFolders(); renderItems();}
 
 function showDropdown(i,e){
   e.stopPropagation();
@@ -170,27 +165,32 @@ function renderItems(){
 
 // Add/Edit links
 function openAddMenu(){selectedColor=null; showModal(`<h3>Add Link</h3><input placeholder="Title" id="title"><input placeholder="URL" id="link"><p>Color Tag:</p><div style="display:flex;gap:4px;">
-<span class="color-tag" style="background:red;" onclick="selectColor('red')"></span>
-<span class="color-tag" style="background:orange;" onclick="selectColor('orange')"></span>
-<span class="color-tag" style="background:yellow;" onclick="selectColor('yellow')"></span>
-<span class="color-tag" style="background:green;" onclick="selectColor('green')"></span>
-<span class="color-tag" style="background:blue;" onclick="selectColor('blue')"></span>
-<span class="color-tag" style="background:purple;" onclick="selectColor('purple')"></span>
-<span class="color-tag" style="background:pink;" onclick="selectColor('pink')"></span>
-<span class="color-tag" style="background:gray;" onclick="selectColor('gray')"></span></div>
+<span class="color-tag" style="background:red;" onclick="selectColor('red',this)"></span>
+<span class="color-tag" style="background:orange;" onclick="selectColor('orange',this)"></span>
+<span class="color-tag" style="background:yellow;" onclick="selectColor('yellow',this)"></span>
+<span class="color-tag" style="background:green;" onclick="selectColor('green',this)"></span>
+<span class="color-tag" style="background:blue;" onclick="selectColor('blue',this)"></span>
+<span class="color-tag" style="background:purple;" onclick="selectColor('purple',this)"></span>
+<span class="color-tag" style="background:pink;" onclick="selectColor('pink',this)"></span>
+<span class="color-tag" style="background:gray;" onclick="selectColor('gray',this)"></span></div>
 <button onclick="saveLink()">Save</button>`);}
-function selectColor(color){selectedColor=color;}
+function selectColor(color,el){
+  selectedColor=color; document.querySelectorAll('#modal .color-tag').forEach(c=>c.classList.remove('selected'));
+  if(el) el.classList.add('selected');
+}
+function clearColorSelection(){document.querySelectorAll('.color-tag').forEach(c=>c.classList.remove('selected'));}
+
 function saveLink(){const title=document.getElementById("title").value;const link=document.getElementById("link").value;if(!title||!link){alert("Fill all fields"); return;} data[currentFolder].items.push({title,content:link,color:selectedColor,date:Date.now()}); save(); closeModal(); renderItems();}
 function openMedia(i){window.open(data[currentFolder].items[i].content,"_blank");}
 function editItem(i){const item=data[currentFolder].items[i]; selectedColor=item.color||null; showModal(`<h3>Edit Link</h3><input id="title" value="${item.title}"><input id="link" value="${item.content}"><p>Color Tag:</p><div style="display:flex;gap:4px;">
-<span class="color-tag" style="background:red;" onclick="selectColor('red')"></span>
-<span class="color-tag" style="background:orange;" onclick="selectColor('orange')"></span>
-<span class="color-tag" style="background:yellow;" onclick="selectColor('yellow')"></span>
-<span class="color-tag" style="background:green;" onclick="selectColor('green')"></span>
-<span class="color-tag" style="background:blue;" onclick="selectColor('blue')"></span>
-<span class="color-tag" style="background:purple;" onclick="selectColor('purple')"></span>
-<span class="color-tag" style="background:pink;" onclick="selectColor('pink')"></span>
-<span class="color-tag" style="background:gray;" onclick="selectColor('gray')"></span></div><button onclick="saveEdit(${i})">Save</button>`);}
+<span class="color-tag" style="background:red;" onclick="selectColor('red',this)"></span>
+<span class="color-tag" style="background:orange;" onclick="selectColor('orange',this)"></span>
+<span class="color-tag" style="background:yellow;" onclick="selectColor('yellow',this)"></span>
+<span class="color-tag" style="background:green;" onclick="selectColor('green',this)"></span>
+<span class="color-tag" style="background:blue;" onclick="selectColor('blue',this)"></span>
+<span class="color-tag" style="background:purple;" onclick="selectColor('purple',this)"></span>
+<span class="color-tag" style="background:pink;" onclick="selectColor('pink',this)"></span>
+<span class="color-tag" style="background:gray;" onclick="selectColor('gray',this)"></span></div><button onclick="saveEdit(${i})">Save</button>`);}
 function saveEdit(i){const item=data[currentFolder].items[i]; item.title=document.getElementById("title").value; item.content=document.getElementById("link").value; item.color=selectedColor; save(); closeModal(); renderItems();}
 function deleteItem(i){showModal(`<h3>Delete Link?</h3><button onclick="confirmDeleteItem(${i})">Delete</button><button onclick="closeModal()">Cancel</button>`);}
 function confirmDeleteItem(i){data[currentFolder].items.splice(i,1); save(); closeModal(); renderItems();}
@@ -205,11 +205,9 @@ document.getElementById("modal").onclick=e=>{if(e.target.id==="modal")closeModal
 function createFolder(){showModal(`<h3>New Folder</h3><input id="newName" placeholder="Folder name"><button onclick="saveNewFolder()">Create</button>`);}
 function saveNewFolder(){ const val=document.getElementById("newName").value; if(val){data.push({name:val,items:[]}); currentFolder=data.length-1; save(); closeModal(); renderFolders(); renderItems(); }}
 
-// Recently added
 function showRecent(){let recent=[]; data.forEach((f,fi)=>f.items.forEach(item=>recent.push({...item,folderIndex:fi}))); recent.sort((a,b)=>b.date-a.date); filtered=recent; renderItems();}
+function filterColor(color,el){clearColorSelection(); if(el) el.classList.add('selected'); let results=[]; data.forEach((f,fi)=>f.items.forEach(item=>{if(item.color===color)results.push({...item,folderIndex:fi})})); filtered=results; renderItems();}
 
-// Filter color
-function filterColor(color){let results=[]; data.forEach((f,fi)=>f.items.forEach(item=>{if(item.color===color)results.push({...item,folderIndex:fi})})); filtered=results; renderItems();}
 renderFolders(); renderItems();
 </script>
 </body>
