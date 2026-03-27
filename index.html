@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>PSJC Media Archive (BETA)</title>
+<title>The Explorer Archive Beta</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
 body {
   margin: 0;
@@ -75,7 +74,8 @@ body.dark .folder.active { background: rgba(0,255,0,0.2); }
 .dropdown {
   position: absolute;
   right: 10px;
-  top: 40%;
+  top: 50%;
+  transform: translateY(-50%);
   background: white;
   border: 1px solid #ccc;
   border-radius: 10px;
@@ -155,7 +155,7 @@ body.dark .modal-content { background: rgba(40,40,40,0.85); color: #f5f5f7; }
 <body>
 
 <header>
-  📁 PSJC Media Archive (BETA)
+  📁 The Explorer Archive Beta
   <button onclick="toggleDarkMode()">🌙</button>
 </header>
 
@@ -179,22 +179,30 @@ body.dark .modal-content { background: rgba(40,40,40,0.85); color: #f5f5f7; }
 
 <script>
 let data = JSON.parse(localStorage.getItem("archive")) || [{name:"Default Folder",items:[]}];
-let currentFolder=0;
-let filtered=null;
+let currentFolder = 0;
+let filtered = null;
 
-function save(){ localStorage.setItem("archive",JSON.stringify(data)); }
+function save(){ localStorage.setItem("archive", JSON.stringify(data)); }
 
 function renderFolders(){
-  const el=document.getElementById("folders"); el.innerHTML="";
+  const el = document.getElementById("folders"); el.innerHTML = "";
   data.forEach((f,i)=>{
-    const div=document.createElement("div");
-    div.className="folder "+(i===currentFolder?"active":"");
-    div.innerHTML=`<span onclick="selectFolder(${i})">${f.name}</span>
-                   <button onclick="showDropdown(${i},event)">⋮</button>
-                   <div class="dropdown" id="dropdown-${i}">
-                     <button onclick="renameFolder(${i})">Rename</button>
-                     <button onclick="deleteFolder(${i})">Delete</button>
-                   </div>`;
+    const div = document.createElement("div");
+    div.className = "folder " + (i===currentFolder ? "active" : "");
+    
+    // Folder click event (exclude dropdown)
+    div.onclick = e=>{
+      if(!e.target.classList.contains('dropdown') && !e.target.closest('.dropdown') && !e.target.tagName==="BUTTON"){
+        selectFolder(i);
+      }
+    }
+
+    div.innerHTML = `<span>${f.name}</span>
+                     <button onclick="showDropdown(${i},event)">⋮</button>
+                     <div class="dropdown" id="dropdown-${i}">
+                       <button onclick="renameFolder(${i})">Rename</button>
+                       <button onclick="deleteFolder(${i})">Delete</button>
+                     </div>`;
     el.appendChild(div);
   });
 }
@@ -205,12 +213,12 @@ function showDropdown(i,e){
   e.stopPropagation();
   document.querySelectorAll('.dropdown').forEach(d=>d.style.display='none');
   document.getElementById(`dropdown-${i}`).style.display='flex';
-  window.addEventListener('click',()=>document.getElementById(`dropdown-${i}`).style.display='none',{once:true});
+  window.addEventListener('click', ()=>document.getElementById(`dropdown-${i}`).style.display='none', {once:true});
 }
 
 function renameFolder(i){
-  const newName=prompt("New folder name:",data[i].name);
-  if(newName){data[i].name=newName; save(); renderFolders();}
+  const newName = prompt("New folder name:", data[i].name);
+  if(newName){ data[i].name = newName; save(); renderFolders(); }
 }
 
 function deleteFolder(i){
@@ -278,5 +286,6 @@ function toggleDarkMode(){ document.body.classList.toggle("dark"); }
 
 renderFolders(); renderItems();
 </script>
+
 </body>
 </html>
