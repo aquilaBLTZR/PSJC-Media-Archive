@@ -2,257 +2,342 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Media Archive Beta</title>
+<title>The Explorer Archive</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body { margin:0; font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#f5f5f7; }
-
-header {
-  padding:15px 20px;
-  font-size:20px;
-  font-weight:600;
-  background:rgba(255,255,255,0.8);
-  backdrop-filter:blur(10px);
-  border-bottom:1px solid #ddd;
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f5f5f7;
+  color: #000;
+  transition: background 0.3s, color 0.3s;
 }
 
-.container { display:flex; height:calc(100vh - 60px); }
+body.dark {
+  background: #1e1e1e;
+  color: #f5f5f7;
+}
+
+header {
+  padding: 15px 20px;
+  font-size: 20px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #ddd;
+  transition: background 0.3s, color 0.3s;
+}
+
+body.dark header {
+  background: rgba(30,30,30,0.8);
+  border-bottom: 1px solid #444;
+  color: #f5f5f7;
+}
+
+.container {
+  display: flex;
+  height: calc(100vh - 60px);
+}
 
 .sidebar {
-  width:260px;
-  background:white;
-  border-right:1px solid #ddd;
-  padding:10px;
+  width: 250px;
+  background: white;
+  border-right: 1px solid #ddd;
+  padding: 10px;
+  transition: background 0.3s, color 0.3s;
+}
+
+body.dark .sidebar {
+  background: #2c2c2c;
+  border-right: 1px solid #444;
+  color: #f5f5f7;
 }
 
 .folder {
-  padding:10px;
-  border-radius:10px;
-  cursor:pointer;
-  display:flex;
-  justify-content:space-between;
-  position:relative;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
 }
 
-.folder:hover { background:#eee; }
-
-.menu {
-  position:absolute;
-  right:10px;
-  top:35px;
-  background:white;
-  border:1px solid #ddd;
-  border-radius:10px;
-  display:none;
-  flex-direction:column;
-  z-index:10;
+.folder.active {
+  background: #e5e5ea;
 }
 
-.menu button {
-  background:none;
-  border:none;
-  padding:8px;
-  text-align:left;
-  width:100%;
+body.dark .folder.active {
+  background: #444;
 }
 
-.menu button:hover {
-  background:#34c759;
-  color:white;
+.main {
+  flex: 1;
+  padding: 20px;
+  transition: background 0.3s, color 0.3s;
+}
+
+body.dark .main {
+  background: #1e1e1e;
+  color: #f5f5f7;
+}
+
+.card {
+  background: white;
+  padding: 12px;
+  border-radius: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  transition: background 0.3s, color 0.3s;
+}
+
+body.dark .card {
+  background: #2c2c2c;
+  color: #f5f5f7;
 }
 
 button {
-  border:none;
-  border-radius:10px;
-  padding:8px 12px;
-  cursor:pointer;
-  transition:all 0.2s ease;
+  border: none;
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.3s, color 0.3s;
 }
 
-.primary { background:black; color:white; }
+.primary { background: black; color: white; }
+.secondary { background: #e5e5ea; }
 
-button:hover {
-  transform:scale(1.08);
-  background:#34c759;
-  color:white;
+body.dark .primary { background: #444; color: #f5f5f7; }
+body.dark .secondary { background: #555; color: #f5f5f7; }
+
+.fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  background: black;
+  color: white;
+  font-size: 24px;
+}
+
+body.dark .fab {
+  background: #444;
+  color: #f5f5f7;
+}
+
+input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  transition: background 0.3s, color 0.3s, border 0.3s;
+}
+
+body.dark input {
+  background: #333;
+  color: #f5f5f7;
+  border: 1px solid #555;
 }
 
 .modal {
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.4);
-  display:none;
-  justify-content:center;
-  align-items:center;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: none;
+  justify-content: center;
+  align-items: center;
 }
 
 .modal-content {
-  background:white;
-  padding:20px;
-  border-radius:16px;
-  width:320px;
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  width: 300px;
+  transition: background 0.3s, color 0.3s;
+}
+
+body.dark .modal-content {
+  background: #2c2c2c;
+  color: #f5f5f7;
 }
 </style>
 </head>
 
 <body>
 
-<header>📁 Media Archive Beta</header>
+<header>
+  📁 The Explorer Archive
+  <button style="float:right;" onclick="toggleDarkMode()">🌙</button>
+</header>
 
 <div class="container">
   <div class="sidebar">
-    <button class="primary" id="createBtn">+ Folder</button>
+    <button class="primary" onclick="createFolder()">+ Folder</button>
     <div id="folders"></div>
   </div>
 
   <div class="main">
-    <h3 id="pathDisplay">Root</h3>
+    <input placeholder="Search..." oninput="search(this.value)">
+    <div id="items"></div>
   </div>
 </div>
 
-<!-- Modal -->
-<div class="modal" id="folderModal">
-  <div class="modal-content">
-    <h3>Create Folder</h3>
-    <input id="newFolderName" placeholder="Folder Name">
-    <button id="saveFolderBtn">Save</button>
-  </div>
+<button class="fab" onclick="openAddMenu()">+</button>
+
+<div class="modal" id="modal">
+  <div class="modal-content" id="modalContent"></div>
 </div>
 
 <script>
-let data = JSON.parse(localStorage.getItem("archive")) || {
-  name:"root",
-  folders:[],
-  items:[]
-};
+let data = JSON.parse(localStorage.getItem("archive")) || [
+  { name: "Default Folder", items: [] }
+];
 
-let path=[data];
+let currentFolder = 0;
+let filtered = null;
 
-function save(){ localStorage.setItem("archive",JSON.stringify(data)); }
-function current(){ return path[path.length-1]; }
+function save() { localStorage.setItem("archive", JSON.stringify(data)); }
 
-/* RENDER */
-function render(){
-  renderFolders();
-  renderPath();
-}
+function renderFolders() {
+  let el = document.getElementById("folders");
+  el.innerHTML = "";
 
-function renderPath(){
-  document.getElementById("pathDisplay").innerText =
-    path.map(p=>p.name).join(" / ");
-}
+  data.forEach((f, i) => {
+    let div = document.createElement("div");
+    div.className = "folder " + (i === currentFolder ? "active" : "");
 
-/* FOLDERS */
-function renderFolders(){
-  const el=document.getElementById("folders");
-  el.innerHTML="";
-
-  if(path.length>1){
-    let back=document.createElement("div");
-    back.textContent="⬅ Back";
-    back.style.cursor="pointer";
-    back.onclick=()=>{ path.pop(); render(); };
-    el.appendChild(back);
-  }
-
-  current().folders.forEach((f,i)=>{
-    const div=document.createElement("div");
-    div.className="folder";
-
-    const nameSpan=document.createElement("span");
-    nameSpan.textContent=f.name;
-    nameSpan.onclick=()=>openFolder(i);
-
-    const menuBtn=document.createElement("button");
-    menuBtn.textContent="⋮";
-
-    const menu=document.createElement("div");
-    menu.className="menu";
-
-    const renameBtn=document.createElement("button");
-    renameBtn.textContent="Rename";
-    renameBtn.onclick=(e)=>{
-      e.stopPropagation();
-      renameFolder(i);
-    };
-
-    const deleteBtn=document.createElement("button");
-    deleteBtn.textContent="Delete";
-    deleteBtn.onclick=(e)=>{
-      e.stopPropagation();
-      deleteFolder(i);
-    };
-
-    menu.appendChild(renameBtn);
-    menu.appendChild(deleteBtn);
-
-    menuBtn.onclick=(e)=>{
-      e.stopPropagation();
-      closeAllMenus();
-      menu.style.display="flex";
-    };
-
-    div.appendChild(nameSpan);
-    div.appendChild(menuBtn);
-    div.appendChild(menu);
+    div.innerHTML = `
+      <span onclick="selectFolder(${i})">${f.name}</span>
+      <button onclick="deleteFolder(${i})">⋮</button>
+    `;
 
     el.appendChild(div);
   });
 }
 
-/* MENU CLOSE */
-function closeAllMenus(){
-  document.querySelectorAll(".menu").forEach(m=>m.style.display="none");
+function selectFolder(i) {
+  currentFolder = i;
+  filtered = null;
+  renderItems();
+  renderFolders();
 }
 
-document.addEventListener("click", closeAllMenus);
-
-/* ACTIONS */
-function openFolder(i){
-  path.push(current().folders[i]);
-  render();
-}
-
-function deleteFolder(i){
-  if(!confirm("Delete folder?")) return;
-  current().folders.splice(i,1);
-  save(); render();
-}
-
-function renameFolder(i){
-  let name=prompt("New name:");
-  if(!name) return;
-  current().folders[i].name=name;
-  save(); render();
-}
-
-/* CREATE FOLDER */
-document.getElementById("createBtn").onclick=()=>{
-  folderModal.style.display="flex";
-  setTimeout(()=>newFolderName.focus(),50);
-};
-
-document.getElementById("saveFolderBtn").onclick=saveNewFolder;
-
-function saveNewFolder(){
-  let name=newFolderName.value.trim();
-  if(!name){ alert("Enter name"); return; }
-
-  current().folders.push({name,folders:[],items:[]});
-
+function deleteFolder(i) {
+  if (!confirm("Delete this folder?")) return;
+  data.splice(i, 1);
+  if (currentFolder >= data.length) currentFolder = 0;
   save();
-  newFolderName.value="";
-  folderModal.style.display="none";
-  render();
+  renderFolders();
+  renderItems();
 }
 
-/* ENTER KEY */
-newFolderName.addEventListener("keydown",e=>{
-  if(e.key==="Enter") saveNewFolder();
-});
+function renderItems() {
+  let el = document.getElementById("items");
+  el.innerHTML = "";
+  let items = filtered || data[currentFolder].items;
 
-render();
+  items.forEach((item, i) => {
+    let div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <span onclick="openMedia(${i})">🔗 ${item.title}</span>
+      <div>
+        <button class="secondary" onclick="editItem(${i})">Edit</button>
+        <button class="secondary" onclick="deleteItem(${i})">Delete</button>
+      </div>
+    `;
+
+    el.appendChild(div);
+  });
+}
+
+function openAddMenu() {
+  showModal(`
+    <h3>Add Link</h3>
+    <input placeholder="Title" id="title">
+    <input placeholder="URL (YouTube, Drive, FB...)" id="link">
+    <button onclick="saveLink()">Save</button>
+  `);
+}
+
+function saveLink() {
+  let title = document.getElementById("title").value;
+  let link = document.getElementById("link").value;
+  if (!title || !link) { alert("Fill all fields"); return; }
+
+  data[currentFolder].items.push({ title, content: link });
+  save();
+  closeModal();
+  renderItems();
+}
+
+function openMedia(i) {
+  let item = data[currentFolder].items[i];
+  window.open(item.content, "_blank");
+}
+
+function editItem(i) {
+  let item = data[currentFolder].items[i];
+
+  showModal(`
+    <h3>Edit Link</h3>
+    <input id="title" value="${item.title}">
+    <input id="link" value="${item.content}">
+    <button onclick="saveEdit(${i})">Save</button>
+  `);
+}
+
+function saveEdit(i) {
+  let item = data[currentFolder].items[i];
+  item.title = document.getElementById("title").value;
+  item.content = document.getElementById("link").value;
+  save();
+  closeModal();
+  renderItems();
+}
+
+function deleteItem(i) {
+  if (!confirm("Delete this item?")) return;
+  data[currentFolder].items.splice(i, 1);
+  save();
+  renderItems();
+}
+
+function search(q) {
+  if (!q) { filtered = null; renderItems(); return; }
+  filtered = data[currentFolder].items.filter(i =>
+    i.title.toLowerCase().includes(q.toLowerCase())
+  );
+  renderItems();
+}
+
+function showModal(html) {
+  modalContent.innerHTML = html;
+  modal.style.display = "flex";
+}
+
+function closeModal() { modal.style.display = "none"; }
+modal.onclick = e => { if (e.target.id === "modal") closeModal(); };
+
+function createFolder() {
+  let name = prompt("Folder name:");
+  if (!name) return;
+  data.push({ name, items: [] });
+  save();
+  renderFolders();
+}
+
+renderFolders();
+renderItems();
+
+/* === DARK MODE === */
+function toggleDarkMode() {
+  document.body.classList.toggle("dark");
+}
 </script>
 
 </body>
