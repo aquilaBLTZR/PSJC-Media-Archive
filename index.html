@@ -32,30 +32,35 @@ header {
   cursor:pointer;
   display:flex;
   justify-content:space-between;
+  position:relative;
 }
 
 .folder:hover { background:#eee; }
 
-.main { flex:1; padding:20px; }
-
-.card {
+.menu {
+  position:absolute;
+  right:10px;
+  top:35px;
   background:white;
-  padding:12px;
-  border-radius:14px;
-  margin-bottom:10px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
+  border:1px solid #ddd;
+  border-radius:10px;
+  display:none;
+  flex-direction:column;
+  z-index:10;
 }
 
-.thumb {
-  width:60px;
-  height:40px;
-  border-radius:6px;
-  margin-right:10px;
+.menu button {
+  background:none;
+  border:none;
+  padding:8px;
+  text-align:left;
+  width:100%;
 }
 
-.row { display:flex; align-items:center; }
+.menu button:hover {
+  background:#34c759;
+  color:white;
+}
 
 button {
   border:none;
@@ -66,37 +71,11 @@ button {
 }
 
 .primary { background:black; color:white; }
-.secondary { background:#e5e5ea; }
 
 button:hover {
   transform:scale(1.08);
   background:#34c759;
   color:white;
-}
-
-button:active { transform:scale(0.98); }
-
-.fab {
-  position:fixed;
-  bottom:20px;
-  right:20px;
-  width:55px;
-  height:55px;
-  border-radius:50%;
-  background:black;
-  color:white;
-  font-size:24px;
-  transition:all 0.2s ease;
-}
-
-.fab:hover { transform:scale(1.12); background:#34c759; }
-
-input, select {
-  width:100%;
-  padding:8px;
-  margin-bottom:10px;
-  border-radius:8px;
-  border:1px solid #ccc;
 }
 
 .modal {
@@ -123,123 +102,155 @@ input, select {
 
 <div class="container">
   <div class="sidebar">
-    <button class="primary" onclick="openCreateFolderPanel()">+ Folder</button>
+    <button class="primary" id="createBtn">+ Folder</button>
     <div id="folders"></div>
   </div>
 
   <div class="main">
-    <div id="items"></div>
+    <h3 id="pathDisplay">Root</h3>
   </div>
 </div>
 
-<button class="fab" onclick="openAdd()">+</button>
-
-<!-- Folder Modal -->
+<!-- Modal -->
 <div class="modal" id="folderModal">
   <div class="modal-content">
-    <h3>Create New Folder</h3>
+    <h3>Create Folder</h3>
     <input id="newFolderName" placeholder="Folder Name">
-    <button onclick="saveNewFolder()">Save</button>
+    <button id="saveFolderBtn">Save</button>
   </div>
 </div>
 
 <script>
 let data = JSON.parse(localStorage.getItem("archive")) || {
-  name: "root",
-  folders: [],
-  items: []
+  name:"root",
+  folders:[],
+  items:[]
 };
 
-let path = [data];
+let path=[data];
 
-function save() {
-  localStorage.setItem("archive", JSON.stringify(data));
-}
+function save(){ localStorage.setItem("archive",JSON.stringify(data)); }
+function current(){ return path[path.length-1]; }
 
-function current() {
-  return path[path.length - 1];
-}
-
-/* 🔥 HARD RESET RENDER */
-function render() {
+/* RENDER */
+function render(){
   renderFolders();
-  renderItems();
+  renderPath();
 }
 
-/* 🔥 FIXED FOLDER RENDER */
-function renderFolders() {
-  const el = document.getElementById("folders");
-  el.innerHTML = "";
+function renderPath(){
+  document.getElementById("pathDisplay").innerText =
+    path.map(p=>p.name).join(" / ");
+}
 
-  const folders = current().folders;
+/* FOLDERS */
+function renderFolders(){
+  const el=document.getElementById("folders");
+  el.innerHTML="";
 
-  if (!folders || folders.length === 0) {
-    el.innerHTML = "<p style='opacity:0.5'>No folders yet</p>";
-    return;
+  if(path.length>1){
+    let back=document.createElement("div");
+    back.textContent="⬅ Back";
+    back.style.cursor="pointer";
+    back.onclick=()=>{ path.pop(); render(); };
+    el.appendChild(back);
   }
 
-  folders.forEach((f, i) => {
-    const div = document.createElement("div");
-    div.className = "folder";
+  current().folders.forEach((f,i)=>{
+    const div=document.createElement("div");
+    div.className="folder";
 
-    div.innerHTML = `
-      <span onclick="openFolder(${i})">${f.name}</span>
-      <button onclick="deleteFolder(${i})">⋮</button>
-    `;
+    const nameSpan=document.createElement("span");
+    nameSpan.textContent=f.name;
+    nameSpan.onclick=()=>openFolder(i);
+
+    const menuBtn=document.createElement("button");
+    menuBtn.textContent="⋮";
+
+    const menu=document.createElement("div");
+    menu.className="menu";
+
+    const renameBtn=document.createElement("button");
+    renameBtn.textContent="Rename";
+    renameBtn.onclick=(e)=>{
+      e.stopPropagation();
+      renameFolder(i);
+    };
+
+    const deleteBtn=document.createElement("button");
+    deleteBtn.textContent="Delete";
+    deleteBtn.onclick=(e)=>{
+      e.stopPropagation();
+      deleteFolder(i);
+    };
+
+    menu.appendChild(renameBtn);
+    menu.appendChild(deleteBtn);
+
+    menuBtn.onclick=(e)=>{
+      e.stopPropagation();
+      closeAllMenus();
+      menu.style.display="flex";
+    };
+
+    div.appendChild(nameSpan);
+    div.appendChild(menuBtn);
+    div.appendChild(menu);
 
     el.appendChild(div);
   });
 }
 
-/* ITEMS (kept simple for stability) */
-function renderItems() {
-  document.getElementById("items").innerHTML = "";
+/* MENU CLOSE */
+function closeAllMenus(){
+  document.querySelectorAll(".menu").forEach(m=>m.style.display="none");
 }
 
-/* CREATE FOLDER PANEL */
-function openCreateFolderPanel() {
-  document.getElementById("folderModal").style.display = "flex";
-}
+document.addEventListener("click", closeAllMenus);
 
-/* 🔥 ACTUAL FIX HERE */
-function saveNewFolder() {
-  const input = document.getElementById("newFolderName");
-  const name = input.value.trim();
-
-  if (!name) {
-    alert("Enter folder name");
-    return;
-  }
-
-  console.log("Creating folder:", name);
-
-  current().folders.push({
-    name: name,
-    folders: [],
-    items: []
-  });
-
-  save();
-
-  input.value = "";
-  document.getElementById("folderModal").style.display = "none";
-
-  // 🔥 FORCE FULL UI REFRESH
-  setTimeout(() => {
-    render();
-  }, 0);
-}
-
-function openFolder(i) {
+/* ACTIONS */
+function openFolder(i){
   path.push(current().folders[i]);
   render();
 }
 
-function deleteFolder(i) {
-  current().folders.splice(i, 1);
+function deleteFolder(i){
+  if(!confirm("Delete folder?")) return;
+  current().folders.splice(i,1);
+  save(); render();
+}
+
+function renameFolder(i){
+  let name=prompt("New name:");
+  if(!name) return;
+  current().folders[i].name=name;
+  save(); render();
+}
+
+/* CREATE FOLDER */
+document.getElementById("createBtn").onclick=()=>{
+  folderModal.style.display="flex";
+  setTimeout(()=>newFolderName.focus(),50);
+};
+
+document.getElementById("saveFolderBtn").onclick=saveNewFolder;
+
+function saveNewFolder(){
+  let name=newFolderName.value.trim();
+  if(!name){ alert("Enter name"); return; }
+
+  current().folders.push({name,folders:[],items:[]});
+
   save();
+  newFolderName.value="";
+  folderModal.style.display="none";
   render();
 }
+
+/* ENTER KEY */
+newFolderName.addEventListener("keydown",e=>{
+  if(e.key==="Enter") saveNewFolder();
+});
 
 render();
 </script>
