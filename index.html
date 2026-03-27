@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>The Explorer Archive Beta</title>
+<title>PSJC Media Archive</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {
@@ -29,18 +29,24 @@ header {
 }
 body.dark header { background: rgba(30,30,30,0.8); border-bottom: 1px solid #444; color: #f5f5f7; }
 
+header .header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 header button {
   border: none;
   background: rgba(0,0,0,0.05);
   border-radius: 12px;
   padding: 6px 10px;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 16px;
   transition: background 0.3s;
 }
-header button:hover { background: rgba(0,0,0,0.15); }
+header button:hover { background: rgba(0,128,0,0.2); color:#fff; }
 body.dark header button { background: rgba(255,255,255,0.1); }
-body.dark header button:hover { background: rgba(255,255,255,0.2); }
+body.dark header button:hover { background: rgba(0,255,0,0.2); }
 
 .container { display: flex; height: calc(100vh - 60px); overflow: hidden; }
 
@@ -142,15 +148,31 @@ input { width: 100%; padding: 10px; margin-bottom: 12px; border-radius: 12px; bo
 body.dark input { background: #333; color: #f5f5f7; border: 1px solid #555; }
 
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; justify-content: center; align-items: center; }
-.modal-content { background: rgba(255,255,255,0.8); backdrop-filter: blur(14px); padding: 24px; border-radius: 20px; width: 320px; transition: all 0.3s; }
+.modal-content { background: rgba(255,255,255,0.8); backdrop-filter: blur(14px); padding: 24px; border-radius: 20px; width: 340px; transition: all 0.3s; }
 body.dark .modal-content { background: rgba(40,40,40,0.85); color: #f5f5f7; }
+
+.color-tag {
+  width: 18px; height: 18px; border-radius: 50%; display: inline-block; margin-right: 4px; cursor:pointer; border: 1px solid #888;
+}
 </style>
 </head>
 <body>
 
 <header>
-  📁 The Explorer Archive Beta
-  <button onclick="toggleDarkMode()">🌙</button>
+  📁 PSJC Media Archive (Alpha 1.0)
+  <div class="header-controls">
+    <button onclick="toggleDarkMode()">🌙</button>
+    <button onclick="showRecent()">Recently Added</button>
+    <!-- Color tag filters -->
+    <span class="color-tag" style="background:red;" onclick="filterColor('red')"></span>
+    <span class="color-tag" style="background:orange;" onclick="filterColor('orange')"></span>
+    <span class="color-tag" style="background:yellow;" onclick="filterColor('yellow')"></span>
+    <span class="color-tag" style="background:green;" onclick="filterColor('green')"></span>
+    <span class="color-tag" style="background:blue;" onclick="filterColor('blue')"></span>
+    <span class="color-tag" style="background:purple;" onclick="filterColor('purple')"></span>
+    <span class="color-tag" style="background:pink;" onclick="filterColor('pink')"></span>
+    <span class="color-tag" style="background:gray;" onclick="filterColor('gray')"></span>
+  </div>
 </header>
 
 <div class="container">
@@ -176,13 +198,16 @@ let data = JSON.parse(localStorage.getItem("archive")) || [{name:"Default Folder
 let currentFolder = 0;
 let filtered = null;
 
+// helper for saving
 function save(){ localStorage.setItem("archive", JSON.stringify(data)); }
 
+// render folders with drag
 function renderFolders(){
   const el = document.getElementById("folders"); el.innerHTML = "";
   data.forEach((f,i)=>{
     const div = document.createElement("div");
     div.className = "folder " + (i===currentFolder ? "active" : "");
+    div.draggable=true;
 
     div.innerHTML = `<span>${f.name}</span>
                      <button onclick="showDropdown(${i},event)">⋮</button>
@@ -191,11 +216,22 @@ function renderFolders(){
                        <button onclick="deleteFolder(${i})">Delete</button>
                      </div>`;
 
-    // Entire div click (exclude dropdown button)
+    // Click select folder
     div.addEventListener('click', e=>{
       if(!e.target.closest('.dropdown') && e.target.tagName!=='BUTTON'){
         selectFolder(i);
       }
+    });
+
+    // Drag events
+    div.addEventListener('dragstart', e=>{ e.dataTransfer.setData("text/plain", i); });
+    div.addEventListener('dragover', e=>{ e.preventDefault(); });
+    div.addEventListener('drop', e=>{
+      e.preventDefault();
+      let from = e.dataTransfer.getData("text/plain");
+      from=parseInt(from); 
+      const temp=data[from]; data.splice(from,1); data.splice(i,0,temp);
+      save(); renderFolders();
     });
 
     el.appendChild(div);
@@ -212,15 +248,25 @@ function showDropdown(i,e){
 }
 
 function renameFolder(i){
-  const newName = prompt("New folder name:", data[i].name);
-  if(newName){ data[i].name=newName; save(); renderFolders(); }
+  showModal(`<h3>Rename Folder</h3>
+<input id="newName" value="${data[i].name}">
+<button onclick="saveRename(${i})">Save</button>`);
+}
+function saveRename(i){
+  const val=document.getElementById("newName").value;
+  if(val){ data[i].name=val; save(); closeModal(); renderFolders(); }
 }
 
 function deleteFolder(i){
-  if(!confirm("Delete this folder?")) return;
+  showModal(`<h3>Delete Folder?</h3>
+<p>Are you sure you want to delete "${data[i].name}"?</p>
+<button onclick="confirmDelete(${i})">Delete</button>
+<button onclick="closeModal()">Cancel</button>`);
+}
+function confirmDelete(i){
   data.splice(i,1);
   if(currentFolder>=data.length) currentFolder=0;
-  save(); renderFolders(); renderItems();
+  save(); closeModal(); renderFolders(); renderItems();
 }
 
 function renderItems(){
@@ -228,7 +274,8 @@ function renderItems(){
   const items=filtered||data[currentFolder].items;
   items.forEach((item,i)=>{
     const div=document.createElement("div"); div.className="card";
-    div.innerHTML=`<span onclick="openMedia(${i})">🔗 ${item.title}</span>
+    let colorStyle=item.color?`background:${item.color};border-radius:50%;width:14px;height:14px;margin-right:6px;display:inline-block;`:'';
+    div.innerHTML=`<span onclick="openMedia(${i})">${colorStyle?`<span style="${colorStyle}"></span>`:''}🔗 ${item.title}</span>
                    <div>
                      <button class="secondary" onclick="editItem(${i})">Edit</button>
                      <button class="secondary" onclick="deleteItem(${i})">Delete</button>
@@ -237,16 +284,33 @@ function renderItems(){
   });
 }
 
-function openAddMenu(){ showModal(`<h3>Add Link</h3>
+function openAddMenu(){
+  showModal(`<h3>Add Link</h3>
 <input placeholder="Title" id="title">
-<input placeholder="URL (YouTube, Drive, FB...)" id="link">
-<button onclick="saveLink()">Save</button>`); }
+<input placeholder="URL" id="link">
+<p>Color Tag:</p>
+<div style="display:flex; gap:4px;">
+  <span class="color-tag" style="background:red;" onclick="selectColor('red')"></span>
+  <span class="color-tag" style="background:orange;" onclick="selectColor('orange')"></span>
+  <span class="color-tag" style="background:yellow;" onclick="selectColor('yellow')"></span>
+  <span class="color-tag" style="background:green;" onclick="selectColor('green')"></span>
+  <span class="color-tag" style="background:blue;" onclick="selectColor('blue')"></span>
+  <span class="color-tag" style="background:purple;" onclick="selectColor('purple')"></span>
+  <span class="color-tag" style="background:pink;" onclick="selectColor('pink')"></span>
+  <span class="color-tag" style="background:gray;" onclick="selectColor('gray')"></span>
+</div>
+<button onclick="saveLink()">Save</button>`);
+  selectedColor=null;
+}
+
+let selectedColor=null;
+function selectColor(color){ selectedColor=color; }
 
 function saveLink(){
   const title=document.getElementById("title").value;
   const link=document.getElementById("link").value;
   if(!title||!link){alert("Fill all fields"); return;}
-  data[currentFolder].items.push({title,content:link});
+  data[currentFolder].items.push({title,content:link,color:selectedColor,date:Date.now()});
   save(); closeModal(); renderItems();
 }
 
@@ -254,9 +318,21 @@ function openMedia(i){ window.open(data[currentFolder].items[i].content,"_blank"
 
 function editItem(i){
   const item=data[currentFolder].items[i];
+  selectedColor=item.color||null;
   showModal(`<h3>Edit Link</h3>
 <input id="title" value="${item.title}">
 <input id="link" value="${item.content}">
+<p>Color Tag:</p>
+<div style="display:flex; gap:4px;">
+  <span class="color-tag" style="background:red;" onclick="selectColor('red')"></span>
+  <span class="color-tag" style="background:orange;" onclick="selectColor('orange')"></span>
+  <span class="color-tag" style="background:yellow;" onclick="selectColor('yellow')"></span>
+  <span class="color-tag" style="background:green;" onclick="selectColor('green')"></span>
+  <span class="color-tag" style="background:blue;" onclick="selectColor('blue')"></span>
+  <span class="color-tag" style="background:purple;" onclick="selectColor('purple')"></span>
+  <span class="color-tag" style="background:pink;" onclick="selectColor('pink')"></span>
+  <span class="color-tag" style="background:gray;" onclick="selectColor('gray')"></span>
+</div>
 <button onclick="saveEdit(${i})">Save</button>`);
 }
 
@@ -264,22 +340,22 @@ function saveEdit(i){
   const item=data[currentFolder].items[i];
   item.title=document.getElementById("title").value;
   item.content=document.getElementById("link").value;
+  item.color=selectedColor;
   save(); closeModal(); renderItems();
 }
 
-function deleteItem(i){ if(!confirm("Delete this item?")) return; data[currentFolder].items.splice(i,1); save(); renderItems(); }
+function deleteItem(i){ showModal(`<h3>Delete Link?</h3><button onclick="confirmDeleteItem(${i})">Delete</button><button onclick="closeModal()">Cancel</button>`);}
+function confirmDeleteItem(i){ data[currentFolder].items.splice(i,1); save(); closeModal(); renderItems(); }
 
-function search(q){ if(!q){filtered=null; renderItems(); return;} filtered=data[currentFolder].items.filter(i=>i.title.toLowerCase().includes(q.toLowerCase())); renderItems(); }
+function search(q){
+  if(!q){filtered=null; renderItems(); return;}
+  filtered=data[currentFolder].items.filter(i=>i.title.toLowerCase().includes(q.toLowerCase())||i.content.toLowerCase().includes(q.toLowerCase()));
+  renderItems();
+}
 
 function showModal(html){ modalContent.innerHTML=html; modal.style.display="flex"; }
 function closeModal(){ modal.style.display="none"; }
 document.getElementById("modal").onclick=e=>{if(e.target.id==="modal")closeModal();}
 
-function createFolder(){ const name=prompt("Folder name:"); if(!name) return; data.push({name,items:[]}); save(); renderFolders(); }
-
-function toggleDarkMode(){ document.body.classList.toggle("dark"); }
-
-renderFolders(); renderItems();
-</script>
-</body>
-</html>
+function createFolder(){ showModal(`<h3>New Folder</h3><input id="newName" placeholder="Folder name"><button onclick="saveNewFolder()">Create</button>`); }
+function saveNewFolder(){ const val=document.getElementById("newName").value; if(val){ data.push({name:val,items:
