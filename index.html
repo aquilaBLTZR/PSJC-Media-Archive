@@ -70,28 +70,17 @@ button {
   transition: all 0.2s ease;
 }
 
-/* Default button styles */
-.primary { 
-  background: black; 
-  color: white; 
-}
+.primary { background: black; color: white; }
+.secondary { background: #e5e5ea; }
 
-.secondary { 
-  background: #e5e5ea; 
-}
-
-/* Hover effect for all buttons */
 button:hover {
   transform: scale(1.08);
-  background: #34c759; /* Apple-style green */
+  background: #34c759;
   color: white;
 }
 
-button:active {
-  transform: scale(0.98);
-}
+button:active { transform: scale(0.98); }
 
-/* Floating + button */
 .fab {
   position: fixed;
   bottom: 20px;
@@ -132,6 +121,12 @@ input, select {
   padding: 20px;
   border-radius: 16px;
   width: 320px;
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-15px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 </style>
 </head>
@@ -142,7 +137,7 @@ input, select {
 
 <div class="container">
   <div class="sidebar">
-    <button class="primary" onclick="createFolder()">+ Folder</button>
+    <button class="primary" onclick="openCreateFolderPanel()">+ Folder</button>
     <button onclick="shareFolder()">🔗 Share Folder</button>
     <button onclick="shareAll()">🌐 Share Archive</button>
     <div id="folders"></div>
@@ -160,8 +155,21 @@ input, select {
 
 <button class="fab" onclick="openAdd()">+</button>
 
+<!-- Link Modal -->
 <div class="modal" id="modal">
   <div class="modal-content" id="modalContent"></div>
+</div>
+
+<!-- Folder Modal -->
+<div class="modal" id="folderModal">
+  <div class="modal-content">
+    <h3>Create New Folder</h3>
+    <input id="newFolderName" placeholder="Folder Name">
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button onclick="closeFolderModal()">Cancel</button>
+      <button class="primary" onclick="saveNewFolder()">Save</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -191,7 +199,10 @@ function renderFolders() {
     back.innerHTML = "⬅ Back";
     back.style.cursor = "pointer";
     back.style.marginBottom = "10px";
-    back.onclick = () => { path.pop(); render(); };
+    back.onclick = () => {
+      path.pop();
+      render();
+    };
     el.appendChild(back);
   }
 
@@ -247,20 +258,47 @@ function openFolder(i) {
   render();
 }
 
-function createFolder() {
-  let name = prompt("Folder name:");
-  if (!name) return;
-
-  current().folders.push({ name, folders: [], items: [] });
-  save(); render();
-}
-
 function deleteFolder(i) {
   if (!confirm("Delete folder?")) return;
   current().folders.splice(i, 1);
-  save(); render();
+  save();
+  render();
 }
 
+/* ✅ FIXED CREATE FOLDER SYSTEM */
+function openCreateFolderPanel() {
+  document.getElementById("folderModal").style.display = "flex";
+}
+
+function closeFolderModal() {
+  document.getElementById("folderModal").style.display = "none";
+}
+
+function saveNewFolder() {
+  let input = document.getElementById("newFolderName");
+  let name = input.value.trim();
+
+  if (!name) {
+    alert("Enter folder name");
+    return;
+  }
+
+  current().folders.push({
+    name: name,
+    folders: [],
+    items: []
+  });
+
+  save();
+
+  input.value = "";
+
+  closeFolderModal();
+
+  render(); // 🔥 ensures folders appear instantly
+}
+
+/* LINK SYSTEM */
 function openAdd() {
   showModal(`
     <h3>Add Link</h3>
@@ -282,7 +320,9 @@ function saveLink() {
     time: Date.now()
   });
 
-  save(); closeModal(); render();
+  save();
+  closeModal();
+  render();
 }
 
 function openLink(i) {
@@ -303,28 +343,37 @@ function saveEdit(i) {
   let item = current().items[i];
   item.title = title.value;
   item.content = link.value;
-  save(); closeModal(); render();
+  save();
+  closeModal();
+  render();
 }
 
 function deleteItem(i) {
   if (!confirm("Delete item?")) return;
   current().items.splice(i, 1);
-  save(); render();
+  save();
+  render();
 }
 
 function search(q) {
-  if (!q) return filtered=null, renderItems();
+  if (!q) {
+    filtered = null;
+    renderItems();
+    return;
+  }
+
   filtered = current().items.filter(i =>
     i.title.toLowerCase().includes(q.toLowerCase())
   );
+
   renderItems();
 }
 
 function sortItems(type) {
   if (type === "az") {
-    current().items.sort((a,b)=>a.title.localeCompare(b.title));
+    current().items.sort((a, b) => a.title.localeCompare(b.title));
   } else {
-    current().items.sort((a,b)=>b.time-a.time);
+    current().items.sort((a, b) => b.time - a.time);
   }
   renderItems();
 }
@@ -337,14 +386,6 @@ function shareFolder() {
 function shareAll() {
   let encoded = encodeURIComponent(JSON.stringify(data));
   prompt("Copy this link:", location.href.split("?")[0] + "?data=" + encoded);
-}
-
-function loadShared() {
-  let params = new URLSearchParams(location.search);
-  if (params.get("data")) {
-    data = JSON.parse(decodeURIComponent(params.get("data")));
-    path = [data];
-  }
 }
 
 function showModal(html) {
@@ -365,7 +406,6 @@ function render() {
   renderItems();
 }
 
-loadShared();
 render();
 </script>
 
